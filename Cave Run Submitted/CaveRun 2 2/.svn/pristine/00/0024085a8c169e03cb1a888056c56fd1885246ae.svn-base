@@ -1,0 +1,241 @@
+//
+//  LevelSelectionScene.m
+//  BowHunting
+//
+//  Created by Sumit Ghosh on 03/05/14.
+//  Copyright (c) 2014 tang. All rights reserved.
+//
+
+#import "LevelSelectionScene.h"
+#import "AppDelegate.h"
+#import "GameMain.h"
+#import "MainMenu.h"
+#import "cocos2d.h"
+#import "GameState.h"
+
+@implementation LevelSelectionScene
+@synthesize loopRun;
+@synthesize man;
+-(id)init {
+    
+    if (self=[super init]) {
+        
+       [[CCSpriteFrameCache sharedSpriteFrameCache] addSpriteFramesWithFile:@"clips.plist"];
+
+        NSLog(@"here");
+        
+        NSLog(@"height=== %f",[UIScreen mainScreen].bounds.size.height);
+     //   NSLog(@"window width= %d =====")
+        CGSize ws=[[CCDirector sharedDirector]winSize];
+        
+        spriteBackground=[CCSprite spriteWithFile:@"background_1-1.png"];
+        spriteBackground.position=ccp(ws.width/2,ws.height/2);
+        
+            if ([UIScreen mainScreen].bounds.size.height<500) {
+            [self resizeSprite:spriteBackground toWidth:500 toHeight:350];
+        }else{
+            [self resizeSprite:spriteBackground toWidth:600 toHeight:350];
+        }
+            [self addChild:spriteBackground];
+      
+      rootViewController = (UIViewController*)[(AppDelegate*)[[UIApplication sharedApplication] delegate] getRootViewController];
+        
+        CCMenuItemImage *menuItemImageBack = [CCMenuItemImage  itemFromNormalImage:@"backLevel.png" selectedImage:@"backLevel.png" target:self selector:@selector(backBtnAction:)];
+        
+        menuBack=[CCMenu menuWithItems:menuItemImageBack, nil];
+        
+         if([UIScreen mainScreen].bounds.size.height>500){
+              scrollV = [[UIScrollView alloc] initWithFrame:CGRectMake(120, 70, 800, 200)];
+              menuBack.position=ccp(120, ws.height-40);
+             
+             levelBackground=[CCSprite spriteWithFile:@"game-bg-1@2x.png"];
+             levelBackground.position=ccp(ws.width/2,ws.height/2);
+             
+             [self addChild:levelBackground];
+             
+             
+             NSMutableArray *walkAnimFrames = [NSMutableArray array];
+             for (int i=1; i<=35; i++) {
+                 [walkAnimFrames addObject:
+                  [[CCSpriteFrameCache sharedSpriteFrameCache] spriteFrameByName:
+                   [NSString stringWithFormat:@"run%04d.png",i]]];
+             }
+             
+             
+             id animation = [CCAnimation animationWithFrames:walkAnimFrames delay:0.06];
+             
+             self.man = [CCSprite spriteWithSpriteFrameName:@"run0001.png"];
+             walkAction = [CCRepeatForever actionWithAction:[CCAnimate actionWithAnimation:animation]];
+             [self.man runAction:walkAction];
+             man.position=ccp(150,ws.height-40);
+             
+             //added now
+             
+            id actionMove = [CCMoveTo actionWithDuration:5 position:ccp(450,ws.height-40)];
+            
+            [man runAction:actionMove];
+             
+             CCCallBlock *block = [CCCallBlock actionWithBlock:^{
+                 [man stopAllActions];
+             }];
+             
+             CCDelayTime *time = [CCDelayTime actionWithDuration:5];
+             
+             
+             [man runAction:[CCSequence actions:time, block, nil]];
+             
+             [self addChild:man];
+             
+                      
+         }
+         else{
+              scrollV = [[UIScrollView alloc] initWithFrame:CGRectMake(70, 70, 350, 200)];
+              menuBack.position=ccp(70, ws.height-40);
+             
+             levelBackground=[CCSprite spriteWithFile:@"game-bg-1.png"];
+            levelBackground.position=ccp(ws.width/2,ws.height/2);
+             
+             [self addChild:levelBackground];
+             
+             
+             NSMutableArray *walkAnimFrames = [NSMutableArray array];
+             for (int i=1; i<=35; i++) {
+                 [walkAnimFrames addObject:
+                  [[CCSpriteFrameCache sharedSpriteFrameCache] spriteFrameByName:
+                   [NSString stringWithFormat:@"run%04d.png",i]]];
+             }
+             
+             
+             id animation = [CCAnimation animationWithFrames:walkAnimFrames delay:0.06];
+             
+             self.man = [CCSprite spriteWithSpriteFrameName:@"run0001.png"];
+             walkAction = [CCRepeatForever actionWithAction:[CCAnimate actionWithAnimation:animation]];
+             [self.man runAction:walkAction];
+            man.position=ccp(100,ws.height-40);
+             
+             //added now
+             
+             id actionMove = [CCMoveTo actionWithDuration:5 position:ccp(400,ws.height-40)];
+          
+             [man runAction:actionMove];
+             
+             
+             CCCallBlock *block = [CCCallBlock actionWithBlock:^{
+                 [man stopAllActions];
+             }];
+             
+                 CCDelayTime *time = [CCDelayTime actionWithDuration:5];
+             
+             
+             [man runAction:[CCSequence actions:time, block, nil]];
+             
+              [self addChild:man];
+            
+         }
+    
+        scrollV.contentSize=CGSizeMake(250,500);
+        scrollV.scrollEnabled=YES;
+        
+       [rootViewController.view addSubview:scrollV];
+     
+        [self addChild:menuBack];
+        
+               
+        for (int i=0; i<5; i++) {
+            
+            for (int j=0; j<10; j++) {
+                btnLevels = [UIButton buttonWithType:UIButtonTypeSystem];
+                
+                btnLevels.frame=CGRectMake(15+65*i, 50*j, 48, 48);
+                unsigned buttonNumber = j*5+i+1;
+                //print values of i and j;
+//                NSLog(@"value of i is==== %d",i);
+//                NSLog(@"value of j is==== %d",j);
+//                NSLog(@"button number===== %d",buttonNumber);
+                
+                
+                btnLevels.tag=buttonNumber;
+               
+                btnLevels.titleLabel.font=[UIFont
+                                     fontWithName:@"NKOTB Fever" size:20];
+                [btnLevels setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+                [btnLevels addTarget:self action:@selector(btnAction:) forControlEvents:UIControlEventTouchUpInside];
+
+                [scrollV addSubview:btnLevels];
+                
+                 int levelNumbers = [[NSUserDefaults standardUserDefaults] integerForKey:@"levelClear"];
+                
+                if (levelNumbers==0) {
+                    
+                    if (buttonNumber==1) {
+                        [btnLevels setBackgroundImage:[UIImage imageNamed:@"level.png"] forState:UIControlStateNormal];
+                        NSString *str =[NSString stringWithFormat:@"%ld",(long)btnLevels.tag];
+                        [btnLevels setTitle:str forState:UIControlStateNormal];
+                    }
+                    else{
+                        [btnLevels setBackgroundImage:[UIImage imageNamed:@"unlock.png"] forState:UIControlStateNormal];
+                    }
+                }
+                
+                else {
+               
+                    if (buttonNumber==levelNumbers) {
+                        [btnLevels setBackgroundImage:[UIImage imageNamed:@"glowing.png"] forState:UIControlStateNormal];
+                        NSString *str =[NSString stringWithFormat:@"%ld",(long)btnLevels.tag];
+                        [btnLevels setTitle:str forState:UIControlStateNormal];
+                    }
+                  else if (buttonNumber>levelNumbers) {
+                    [btnLevels setBackgroundImage:[UIImage imageNamed:@"unlock.png"] forState:UIControlStateNormal];
+                }
+                else {
+                     [btnLevels setBackgroundImage:[UIImage imageNamed:@"level.png"] forState:UIControlStateNormal];
+                    NSString *str =[NSString stringWithFormat:@"%ld",(long)btnLevels.tag];
+                    [btnLevels setTitle:str forState:UIControlStateNormal];
+                }
+                 }
+            }
+        }
+    }
+    return self;
+}
+//to animate the sprite
+
+
+
+-(void)resizeSprite:(CCSprite*)sprite toWidth:(float)width toHeight:(float)height {
+    sprite.scaleX = width / sprite.contentSize.width;
+    sprite.scaleY = height / sprite.contentSize.height;
+}
+
+
+
+-(void)backBtnAction:(id)sender {
+    scrollV.hidden=YES;
+    [self removeChild:spriteBackground cleanup:YES];
+    [self removeChild:menuBack cleanup:YES];
+    [self removeChild:levelBackground cleanup:YES];
+    [[CCDirector sharedDirector] replaceScene:[MainMenu node]];
+}
+-(void)chooseGameScreen {
+   
+
+
+}
+-(void)btnAction:(id)sender {
+    
+    if ([sender isKindOfClass:[UIButton class]]) {
+        NSLog(@"Sender Button Tag =-=-=- %ld",(long)[sender tag]);
+        [GameState sharedState].levelNumber=[sender tag];
+        
+        if ([sender tag] ==1){
+                 [self removeChild:spriteBackground cleanup:YES];
+            [self removeChild:menuBack cleanup:YES];
+            [[CCDirector sharedDirector]replaceScene:[CCTransitionFadeTR transitionWithDuration:1.0 scene:[GameMain scene]]];
+    
+                scrollV.hidden=YES;
+                [self removeChild:spriteBackground cleanup:YES];
+                [self removeChild:menuBack cleanup:YES];
+        }
+}
+}
+@end

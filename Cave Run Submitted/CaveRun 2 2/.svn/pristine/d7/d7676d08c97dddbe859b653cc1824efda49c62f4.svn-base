@@ -1,0 +1,39 @@
+//
+//  LevelSelectionScene.h
+//  BowHunting
+//
+//  Created by Sumit Ghosh on 03/05/14.
+//  Copyright (c) 2014 tang. All rights reserved.
+//
+
+#import "CCSprite.h"
+#import "cocos2d.h"
+#import "CCAnimation+SequenceLoader.h"
+#import "CCAnimate+SequenceLoader.h"
+
+#import "CCAnimation.h"
+
+
+@interface LevelSelectionScene : CCSprite {
+    UIButton *btnLevels;
+    UIButton *btnBack;
+    UIViewController *rootViewController;
+    UIScrollView *scrollV;
+    CCMenu *menuBack;
+    CCSprite *spriteBackground;
+    CCSprite *levelBackground;
+    CCSprite *man;
+    CCAction *walkAction;
+}
+
+//@property(nonatomic,retain) GameChooseScreen *gameChooseScreen;
+@property(nonatomic,retain) id gm,loopRun;
+@property(nonatomic,retain) CCSprite *man;
+-(id)init;
+
+//@implementation CCAnimate (sequenceLoader)
+
+
+
+
+@end

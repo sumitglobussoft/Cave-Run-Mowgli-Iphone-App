@@ -1,0 +1,84 @@
+//
+//  Ham.m
+//  CaveRun
+//
+//  Created by tang on 12-6-7.
+//  Copyright (c) 2012年 __MyCompanyName__. All rights reserved.
+//
+
+#import "MainMenu.h"
+#import "cocos2d.h"
+#import "Player.h"
+#import "GameMain.h"
+#import "SimpleAudioEngine.h"
+#import <FacebookSDK/FacebookSDK.h>
+#import "LevelSelectionScene.h"
+#import "gameResume.h"
+@implementation MainMenu
+CGSize ws;
++(CCScene *) scene
+{
+	// 'scene' is an autorelease object.
+	CCScene *scene = [CCScene node];
+	
+	// 'layer' is an autorelease object.
+	MainMenu *layer = [MainMenu node];
+	
+	// add layer as a child to scene
+	[scene addChild: layer];
+	
+	// return the scene
+	return scene;
+}
+
+-(id) init
+{
+	// always call "super" init
+	// Apple recommends to re-assign "self" with the "super" return value
+	if( (self=[super init])) {
+        
+        ws=[[CCDirector sharedDirector]winSize];
+
+                
+        [CDSoundEngine setMixerSampleRate:CD_SAMPLE_RATE_MID];
+    
+        self.isTouchEnabled = YES;
+        
+        CCSprite *sp=[CCSprite spriteWithFile:@"MainMenu.png"];
+        sp.anchorPoint=ccp(0,0);
+        sp.position=ccp(ws.width==568?0:-(568-480)/2,0);
+       
+        [self addChild:sp];
+        
+        [[SimpleAudioEngine sharedEngine] playBackgroundMusic:@"bgm.mp3" loop:YES];
+//        FBSession *session;
+//        FBAccessTokenData;
+        
+        
+        
+    }
+    
+    return self;
+    
+}
+
+//replaceScene to GameMain
+-(void)ccTouchesBegan:(NSSet *)touches withEvent:(UIEvent *)event{
+//    
+//        [[CCDirector sharedDirector]replaceScene:[CCTransitionFadeBL transitionWithDuration:0.6 scene:[GameMain node]] ];
+    
+    LevelSelectionScene *obj = [[LevelSelectionScene alloc]init];
+    [self addChild:obj];
+
+    
+    
+}
+
+-(void) dealloc{
+    
+    [super dealloc];
+}
+
+
+
+@end

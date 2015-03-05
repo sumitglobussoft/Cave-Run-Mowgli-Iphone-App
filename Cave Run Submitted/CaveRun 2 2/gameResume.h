@@ -1,0 +1,28 @@
+//
+//  gameResume.h
+//  CaveRun
+//
+//  Created by Sumit on 12/06/14.
+//  Copyright 2014 __MyCompanyName__. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "CCSprite.h"
+#import "cocos2d.h"
+#import "CCAnimation+SequenceLoader.h"
+#import "CCAnimate+SequenceLoader.h"
+#import "GameMain.h"
+#import "MainMenu.h"
+#import "CCAnimation.h"
+#import "CCLayer.h"
+
+@interface GamePauseLayer : CCLayer{
+
+}
+@end
+
+@interface gameResume : CCScene {
+    GamePauseLayer *layer;
+}
+@property(nonatomic,strong)id gm;
+@end

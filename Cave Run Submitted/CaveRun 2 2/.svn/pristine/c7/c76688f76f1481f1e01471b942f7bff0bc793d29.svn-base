@@ -1,0 +1,235 @@
+//
+//  GameOverScene.m
+//  CaveRun
+//
+//  Created by Sumit on 17/06/14.
+//  Copyright 2014 __MyCompanyName__. All rights reserved.
+//
+
+#import "GameOverScene.h"
+#import "cocos2d.h"
+#import "GameMain.h"
+#import "MainMenu.h"
+#import "AppDelegate.h"
+#import "GameState.h"
+#import <FacebookSDK/FacebookSDK.h>
+
+
+@implementation GameOverScene
+
+#define ShareToFacebook @"FacebookShare"
+@synthesize gameOverSprite,coinCount,shareText,gameMain,gameOverScreen,coinText1,dis,score,strPostMessage;
+CGSize ws;
++(CCScene *) scene
+{
+	// 'scene' is an autorelease object.
+	CCScene *scene = [CCScene node];
+	
+	// 'layer' is an autorelease object.
+	GameMain *layer = [GameMain node];
+	
+	// add layer as a child to scene
+	[scene addChild: layer];
+	
+	// return the scene
+	return scene;
+}
+
+// on "init" you need to initialize your instance
+-(id) init
+{
+       if (self=[super init]) {
+           
+   //    [self setIsTouchEnabled:YES];
+           
+        CGSize winSize = [CCDirector sharedDirector].winSize;
+       // NSLog(@"coin count==== %d",coinCount);
+        ws=[[CCDirector sharedDirector]winSize];
+        //create game over sprite
+        self.gameOverSprite=[CCSprite spriteWithFile:@"GameOverFinal.png"];
+       // self.gameOverSprite.visible=NO;
+        self.gameOverSprite.visible=YES;
+        [self addChild:self.gameOverSprite];
+        
+                    
+           
+//       self.disText=[CCLabelTTF labelWithString:@"0" fontName:@"JFRocSol.TTF" fontSize:20];
+////        //[self.gameOverSprite addChild:self.disText];
+//       self.disText.anchorPoint=ccp(0,0);
+//        self.disText.position=ccp(340+20,280);
+////        
+////        
+//        //create text to show total coins collected
+//        self.coinText=[CCLabelTTF labelWithString:@"0" fontName:@"JFRocSol.TTF" fontSize:20];
+//       // [self.gameOverSprite addChild:self.coinText];
+//        self.coinText.anchorPoint=ccp(0,0);
+//        self.coinText.position=ccp(340+20,250);
+////
+////        //level text
+//        self.levelText=[CCLabelTTF labelWithString:@"0" fontName:@"JFRocSol.TTF" fontSize:20];
+//        //[self.gameOverSprite addChild:self.levelText];
+//        self.levelText.anchorPoint=ccp(0,0);
+//        self.levelText.position=ccp(340+20,220);
+////
+////        //SCORE TEXT
+//        self.totalScoreText=[CCLabelTTF labelWithString:@"0" fontName:@"JFRocSol.TTF" fontSize:28];
+//       // [self.gameOverSprite addChild:self.totalScoreText];
+//        // self.totalScoreText.anchorPoint=ccp(0,0);
+//        self.totalScoreText.position=ccp(300+20,150);
+//        self.totalScoreText.color=ccc3(255,180,0);
+//
+        self.gameOverSprite.anchorPoint=ccp(0.5,0.5);
+        self.gameOverSprite.position=ccp(ws.width/2,ws.height/2);
+        
+ //added now
+//           NSLog(@"dis=== %d",self.dis);
+//           NSLog(@"cointext1===== %@",self.coinText1);
+//           NSLog(@"score===== %d",self.score);
+           
+           
+           CCMenuItem *menuMainMenu = [CCMenuItemImage itemFromNormalImage:@"Retry1.png" selectedImage:@"Retry1.png" target:self selector:@selector(retryAction:)];
+           
+           CCMenu  *menu1 = [CCMenu menuWithItems: menuMainMenu, nil];
+           menu1.position = ccp(winSize.width/2+110, winSize.height/2-105);
+           [menu1 alignItemsHorizontally];
+           [self addChild:menu1 z:100];
+
+           
+                 //label 1 for coint text
+           
+           CCLabelTTF *label1 = [CCLabelTTF labelWithString:self.coinText1 fontName:@"Arial Rounded MT Bold" fontSize:24];
+           if([UIScreen mainScreen].bounds.size.height>500){
+           label1.position = ccp(430,205);
+               
+           }else{
+           label1.position = ccp(370,205);
+           }
+           label1.color = ccc3(255, 255, 255);
+           
+           [self addChild: label1];
+           
+        
+           //label 2 score text
+           
+           NSString * scoretext = [NSString stringWithFormat:@"%i", self.score];
+           
+           CCLabelTTF *label2 = [CCLabelTTF labelWithString:scoretext fontName:@"Arial Rounded MT Bold" fontSize:24];
+           if([UIScreen mainScreen].bounds.size.height>500){
+           label2.position = ccp(280,110);
+           }else{
+           label2.position = ccp(250,110);
+           }
+           label2.color = ccc3(255, 255, 255);
+           
+           [self addChild: label2];
+           
+           
+           //label 3 distance text
+             NSString * distance = [NSString stringWithFormat:@"%i", self.dis];
+           
+           CCLabelTTF *label3 = [CCLabelTTF labelWithString:distance fontName:@"Arial Rounded MT Bold" fontSize:24];
+             if([UIScreen mainScreen].bounds.size.height>500){
+               label3.position = ccp(430,238);
+                 
+             }else{
+           label3.position = ccp(370,238);
+             }
+           label3.color = ccc3(255, 255, 255);
+           
+           [self addChild: label3];
+           
+           //facebook added now
+           
+           self.shareOnFb=[CCMenuItemImage itemFromNormalImage:@"share.png" selectedImage:@"share.png" target:self selector:@selector(facebookBtnClick)];
+           
+           self.shareButtons=[CCMenu menuWithItems:self.shareOnFb, nil];
+           self.shareButtons.position=ccp(ws.width/2-70, 55);
+           [self.shareButtons alignItemsHorizontally];
+           [self addChild:self.shareButtons z:200];
+           [self.shareButtons setVisible:YES];
+           
+           
+        }
+    return self;
+}
+
+-(void)setScore{
+
+    
+}
+
+-(void)retryAction:(id)sender {
+    NSLog(@"in retry action");
+    [[CCDirector sharedDirector]replaceScene:[CCTransitionFadeTR transitionWithDuration:1.0 scene:[GameMain scene]]];
+}
+
+//facebook action
+
+-(void)facebookBtnClick {
+    NSLog(@"Facebook share Button Clicked...");
+    
+    AppDelegate *appDelegate = (AppDelegate *)[UIApplication sharedApplication].delegate;
+    //  appDelegate.delegate=self;
+    
+    if (FBSession.activeSession.isOpen) {
+        
+        [self shareOnFacebook];
+    }
+    else{
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shareOnFacebook) name:ShareToFacebook object:nil];
+        [appDelegate openSessionWithAllowLoginUI:1];
+    }
+    
+}
+
+//method 2
+-(void) shareOnFacebook{
+    //---------------------------------------
+  //  [GameState sharedState].levelNumber=[GameState sharedState].levelNumber+1;
+    [GameState sharedState].levelNumber=1;
+    self.strPostMessage = [NSString stringWithFormat:@"I cleared Level %i  and scored %d points.",[GameState sharedState].levelNumber,self.score];
+    
+    //    self.strPostMessage=[NSString stringWithFormat:@"i have scored %@ points.",self.totalScoreText];
+    
+    NSLog(@"Messaga == %@",self.strPostMessage);
+    NSString *strLife = [NSString stringWithFormat:@"Level %d",[GameState sharedState].levelNumber];
+    
+    NSMutableDictionary *params =
+    [NSMutableDictionary dictionaryWithObjectsAndKeys:
+     self.strPostMessage, @"description", strLife, @"caption",
+     @"http://www.globussoft.com/", @"link",@"Cave Run",@"name",
+     nil];
+    //provides webdialog for apprequest.
+    //
+    [FBWebDialogs presentFeedDialogModallyWithSession:nil parameters:params handler:^(FBWebDialogResult result, NSURL *resultUrl, NSError *error){
+        
+        if (error) {
+            NSLog(@"Error to post on facebook = %@", [error localizedDescription]);
+        }
+        else{
+            
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:ShareToFacebook object:nil];
+            
+            NSLog(@"result==%u",result);
+            NSLog(@"Url==%@",resultUrl);
+            if (result == FBWebDialogResultDialogNotCompleted) {
+                NSLog(@"Error to post on facebook = %@", [error localizedDescription]);
+                NSLog(@"User cancel Request");
+            }//End Result Check
+            else{
+                NSString *sss= [NSString stringWithFormat:@"%@",resultUrl];
+                if ([sss rangeOfString:@"post_id"].location == NSNotFound) {
+                    NSLog(@"User Cancel Share");
+                }
+                else{
+                    NSLog(@"posted on wall");
+                }
+            }//End Else Block Result Check
+        }
+    }];
+}
+
+
+@end
+
+

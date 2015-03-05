@@ -1,0 +1,592 @@
+//
+//  HelloWorldLayer.m
+//  CaveRun
+//
+//  Created by tang on 12-6-4.
+//  Copyright __MyCompanyName__ 2012年. All rights reserved.
+//
+
+
+// Import the interfaces
+#import "GameMain.h"
+#import "Player.h"
+#import "Background.h"
+#import "Platform.h"
+#import "CCAnimate+SequenceLoader.h"
+#import "AppDelegate.h"
+#import <FacebookSDK/FacebookSDK.h>
+#import "GameState.h"
+#import "gameResume.h"
+#import "GameOver.h"
+
+
+// Add to top of file
+#import "SimpleAudioEngine.h"
+
+#define ShareToFacebook @"FacebookShare"
+// GameMain implementation
+CGSize ws;
+@implementation GameMain
+
+@synthesize player,bg,pf,stopGame,gameOverSprite,readyGoClip,coinBigClip,readyGoClipAction,readyGoClipIsFinished;
+@synthesize disText,coinText,levelText,totalScoreText,runTimeDisText,runTimeCoinText,loopStand,loopCoinBig,disCMC,dis,levelUp,distextcount,score,coinText1,bottomMenu,livesText,lives1;
+@synthesize Bool;
+
++(CCScene *) scene
+{
+	// 'scene' is an autorelease object.
+	CCScene *scene = [CCScene node];
+	
+	// 'layer' is an autorelease object.
+	GameMain *layer = [GameMain node];
+	
+	// add layer as a child to scene
+	[scene addChild: layer];
+	
+	// return the scene
+	return scene;
+}
+
+// on "init" you need to initialize your instance
+-(id) init
+{
+	// always call "super" init
+	// Apple recommends to re-assign "self" with the "super" return value
+    
+     self.transValue = YES;
+     lives= [NSUserDefaults standardUserDefaults];
+    
+        
+    [lives setInteger:self.lives forKey:@"livestext"];
+    
+    NSLog(@"self.lives in gamemain init== %d",self.pf.lives);
+    
+    [[NSUserDefaults standardUserDefaults]synchronize];
+
+    
+	if( (self=[super init])) {
+        [[CCSpriteFrameCache sharedSpriteFrameCache] addSpriteFramesWithFile:@"decal.plist"];
+        [[CCSpriteFrameCache sharedSpriteFrameCache] addSpriteFramesWithFile:@"clips.plist"];
+        [[CCSpriteFrameCache sharedSpriteFrameCache] addSpriteFramesWithFile:@"readyGo.plist"];
+        
+        ws=[[CCDirector sharedDirector]winSize];
+        //create game over sprite
+        self.readyGoClipIsFinished=NO;
+        self.gameOverSprite=[CCSprite spriteWithFile:@"GameOver.png"];
+        self.gameOverSprite.visible=NO;
+        
+        self.disText=[CCLabelTTF labelWithString:@"0" fontName:@"JFRocSol.TTF" fontSize:20];
+        [self.gameOverSprite addChild:self.disText];
+        self.disText.anchorPoint=ccp(0,0);
+        self.disText.position=ccp(340+20,280);
+        
+        //create text to show total coins collected
+        self.coinText=[CCLabelTTF labelWithString:@"0" fontName:@"JFRocSol.TTF" fontSize:20];
+        [self.gameOverSprite addChild:self.coinText];
+        self.coinText.anchorPoint=ccp(0,0);
+        self.coinText.position=ccp(340+20,250);
+        
+        //level text
+        self.levelText=[CCLabelTTF labelWithString:@"0" fontName:@"JFRocSol.TTF" fontSize:20];
+        [self.gameOverSprite addChild:self.levelText];
+        self.levelText.anchorPoint=ccp(0,0);
+        self.levelText.position=ccp(340+20,220);
+        
+       //SCORE TEXT
+        self.totalScoreText=[CCLabelTTF labelWithString:@"0" fontName:@"JFRocSol.TTF" fontSize:28];
+        [self.gameOverSprite addChild:self.totalScoreText];
+       // self.totalScoreText.anchorPoint=ccp(0,0);
+        self.totalScoreText.position=ccp(300+20,150);
+        self.totalScoreText.color=ccc3(255,180,0);
+
+        
+        // At end of applicationDidFinishLaunching, replace last line with the following 2 lines:
+        //[[SimpleAudioEngine sharedEngine] playBackgroundMusic:@"ouch.wav" loop:YES];
+        
+        self.gameOverSprite.anchorPoint=ccp(0.5,0.5);
+        self.gameOverSprite.position=ccp(ws.width/2,ws.height/2);
+        
+        
+        self.isTouchEnabled = YES;
+        
+        self.stopGame=NO;
+        
+        //background
+        
+        self.bg=[ Background node];
+        
+        [self.bg setColorWithRBG];
+        
+        [self addChild:bg];
+        
+        
+        
+        self.pf=[Platform node];
+        self.pf.gm=self;
+        [self addChild:self.pf];
+        
+        self.player=[Player node];
+        
+        self.player.platformAcc=self.pf;
+        
+        self.player.position=ccp([Player initX],[self.pf getSafeY]);
+        
+        self.player.gm=self;
+        
+        
+        //play idle anination
+        
+        [self.player gotoAndStop:@"stand" val:0];
+         
+        self.pf.player=self.player;
+        
+        [self addChild:self.player];
+        
+        
+        
+        [self addChild:self.gameOverSprite];
+        
+        
+        //reday go sequence animation 
+        
+        self.readyGoClipAction=[CCSequence actions:[CCAnimate actionWithSpriteSequence:@"readyGo%04d.png"
+                                         
+                                                                  numFrames:55 
+                                                                      delay:0.03f 
+                                                    restoreOriginalFrame:NO],
+                     [CCCallFunc actionWithTarget:self selector:@selector(startGame)],nil];
+        
+        self.readyGoClip=[CCSprite node];
+        
+        CGSize winSize = [[CCDirector sharedDirector]winSize];
+        
+        self.readyGoClip.position=ccp(winSize.width/2,winSize.height/2);
+        
+        [self addChild:self.readyGoClip];
+        
+        self.loopCoinBig=[CCRepeatForever actionWithAction:[CCAnimate actionWithSpriteSequence:@"coin_big%04d.png"
+                                                            
+                                                                                     numFrames:36
+                                                                                         delay:0.05f 
+                                                                          restoreOriginalFrame:NO]];
+        
+        self.disCMC=[CCSprite node];
+        
+        [self addChild:self.disCMC];
+        
+        self.coinBigClip=[CCSprite node];
+        self.coinBigClip.anchorPoint=ccp(0,0);
+        self.coinBigClip.position=ccp(ws.width-30,280);
+        [self.disCMC addChild:self.coinBigClip];
+        
+        [self.coinBigClip runAction:self.loopCoinBig];
+        
+        
+//        self.runTimeDisText=[CCLabelTTF labelWithString:@"0.0" fontName:@"JFRocSol.TTF" fontSize:22];
+//        self.runTimeDisText.anchorPoint=ccp(1,0);
+//        self.runTimeDisText.position=ccp(470,290);
+//        [self.disCMC addChild:self.runTimeDisText];
+        
+        
+        self.runTimeCoinText=[CCLabelTTF labelWithString:@"0" fontName:@"JFRocSol.TTF" fontSize:22];
+        
+        self.runTimeCoinText.anchorPoint=ccp(1,0);
+        
+        self.runTimeCoinText.position=ccp(ws.width-(480-446),290);
+        
+        [self.disCMC addChild:self.runTimeCoinText];
+        
+        //added now
+        self.livesText=[CCLabelTTF labelWithString:@"3" fontName:@"JFRocSol.TTF" fontSize:22];
+        
+        self.livesText.anchorPoint=ccp(1, 0);
+        
+        self.livesText.position=ccp(280,280);
+        [self.disCMC addChild:self.livesText];
+        
+        self.lives1=[CCLabelTTF labelWithString:@"Lives" fontName:@"JFRocSol.TTF" fontSize:22];
+        self.lives1.anchorPoint=ccp(1, 0);
+        
+        self.lives1.position=ccp(250,280);
+        [self.disCMC addChild:self.lives1];
+        
+        
+        self.levelUp=[CCSprite spriteWithFile:@"flash.png"];
+        self.levelUp.anchorPoint=ccp(0,0);
+         //self.flash.scale=10;
+        
+        self.levelUp.visible=NO;
+        [self addChild:self.levelUp];
+        
+        //added now.
+//        self.shareOnFb=[CCMenuItemImage itemFromNormalImage:@"share.png" selectedImage:@"share.png" target:self selector:@selector(facebookBtnClick)];
+//        
+//        self.shareButtons=[CCMenu menuWithItems:self.shareOnFb, nil];
+//        self.shareButtons.position=ccp(ws.width/2-70, 55);
+//        [self.shareButtons alignItemsHorizontally];
+//        [self addChild:self.shareButtons z:200];
+//        [self.shareButtons setVisible:NO];
+        
+        //added now
+        
+        CCMenuItemImage *pauseItem = [CCMenuItemImage  itemFromNormalImage:@"pause.png" selectedImage:@"pause.png" target:self selector:@selector(pauseAction:)];
+        
+        pause=[CCMenu menuWithItems:pauseItem, nil];
+        
+        pause.position=ccp(50, ws.height-40);
+        
+        [self addChild:pause];
+        
+        
+        // sound toggle on/off
+        
+        CCMenuItem *soundOnItem = [CCMenuItemImage itemFromNormalImage:@"musicOn2.png"
+                                                         selectedImage:@"musicOn2.png"
+                                                                target:nil
+                                                              selector:nil];
+        
+        
+        CCMenuItem *soundOffItem = [CCMenuItemImage itemFromNormalImage:@"musicOff2.png"
+                                                          selectedImage:@"musicOff2.png"
+                                                                 target:nil
+                                                               selector:nil];
+        
+        self.soundToggleItem = [CCMenuItemToggle itemWithTarget:self
+                                                       selector:@selector(soundButtonTapped:)
+                                                          items:soundOnItem, soundOffItem, nil];
+        
+        
+        if ((self.soundToggleItem.selectedIndex==0)) {
+            NSLog(@"Sound button tapped!");
+            [[SimpleAudioEngine sharedEngine] playBackgroundMusic:@"bgm.mp3" loop:YES];
+        }
+        
+        
+        
+        bottomMenu = [CCMenu menuWithItems:self.soundToggleItem, nil];
+        if([UIScreen mainScreen].bounds.size.height>500){
+            self.soundToggleItem.position = ccp(-200, ws.height +80);
+        }else{
+        self.soundToggleItem.position = ccp(-150, ws.height +35);
+        
+        }
+       [self addChild: bottomMenu];
+        
+        //timer
+        
+        //        self.lblTime=[CCLabelBMFont labelWithString:[NSString stringWithFormat:@"Time :%i",limitTime] fntFile:@"font_30.fnt"];
+        self.lblTime = [CCLabelTTF labelWithString:[NSString stringWithFormat:@"Time :%i",limitTime] fontName:@"JFRocSol.TTF" fontSize:20 ];
+        //       self.lblTime = [CCLabelTTF labelWithString:@"play!" fontName:@"JFRocSol.TTF" fontSize:40];
+        
+        limitTime=30;
+        
+        theTimer=limitTime;
+        self.lblTime.position=ccp(80, 20);
+        
+    }
+	return self;
+}
+//timer action
+
+-(void)updateTimeDisplay{
+    theTimer--;
+    //NSLog(@"time is======%d",theTimer);
+    [self.lblTime setString:[NSString stringWithFormat:@"Time :%i",theTimer]];
+    if (theTimer==0) {
+        
+        theTimer=30;
+        
+        [self unschedule:@selector(updateTimeDisplay)];
+        [self showGameOver];
+    }
+}
+
+-(void) soundButtonTapped: (id) sender
+{
+ 	if ((self.soundToggleItem.selectedIndex==0)) {
+        NSLog(@"Sound button tapped!");
+        [[SimpleAudioEngine sharedEngine] playBackgroundMusic:@"bgm.mp3" loop:YES];
+        
+        
+    }else{
+        [[SimpleAudioEngine sharedEngine]stopBackgroundMusic];
+
+    }
+	
+}
+
+
+//start run action - readyGoClipAction after replaceScene finished
+
+-(void)pauseAction:(id)sender{
+    
+    //    [[CCDirector sharedDirector] pause];
+    //    [self pauseSchedulerAndActions];
+    
+    self.transValue = NO;
+    gameResume *obj = [[[gameResume alloc] init] autorelease];
+    [[CCDirector sharedDirector] pushScene:obj];
+    
+ }
+
+-(void) onEnterTransitionDidFinish {
+    self.readyGoClipIsFinished=NO;
+    [super onEnterTransitionDidFinish];
+    if (self.transValue==YES) {
+        [self.readyGoClip runAction:self.readyGoClipAction];
+        
+    }
+    else{
+        self.readyGoClipIsFinished=YES;
+    }
+}
+
+
+//start run action - readyGoClipAction after replaceScene finished
+
+
+//update runTimeCoinText text
+-(void) updateScore{
+    
+    [self.runTimeCoinText setString:[NSString stringWithFormat:@"%i",self.pf.coinsNum]];
+   //NSLog(@"coin text==== %d",self.pf.coinsNum);
+    
+}
+
+-(void) updateLives:(int)cnt{
+   // self.pf.lives-=1;
+    if (self.pf.lives<=0) {
+        [self showGameOver];
+      
+    }
+    [self.livesText setString:[NSString stringWithFormat:@"%i",self.pf.lives]];
+   // NSLog(@"lives text======== %d",self.pf.lives);
+}
+
+//start game
+-(void) startGame{
+    self.readyGoClipIsFinished=YES;
+    self.dis=0;
+    self.disCMC.visible=YES;
+    self.player.state=0;
+   self.pf.lives=3;
+    [self.player gotoAndStop:@"run" val:0];
+    [self schedule:@selector(loop:)];
+}
+
+//show game over image and update some texts..
+-(void) showGameOver{
+    
+     [self setIsTouchEnabled:NO];
+    [self removeChild:self.player cleanup:YES];
+     self.gameOverScreen.visible=YES;
+    self.disCMC.visible=NO;
+    //added now
+    
+    [pause setVisible:NO];
+    
+    [bottomMenu setVisible:NO];
+    
+    //NSLog(@"coin text=== %@",self.runTimeCoinText.string);
+    
+    coinText1=self.runTimeCoinText.string;
+   
+   //NSLog(@"dis text===%d",(int) (self.dis*0.01));
+    distextcount=(int) (self.dis*0.01);
+    
+     score=self.pf.coinsNum*30+self.dis+self.pf.currentLevel*500;
+  //
+   // NSLog(@"score==== %d",score);
+    
+    double delayInSeconds = 3.0;
+    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC);
+    dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+        //code to be executed on the main queue after delay
+        GameOverScene *obj = [GameOverScene alloc];
+        obj.coinText1=self.coinText1;
+        obj.distextcount = self.distextcount;
+        obj.dis = (self.dis*0.01);
+        obj.score = self.score;
+        [obj init];
+//        NSLog(@" obj.dis====== %d",obj.dis);
+//        NSLog(@" obj.score======%d",obj.score);
+//        NSLog(@"obj.coinText1==== %@",obj.coinText1);
+        
+        
+        [self addChild:obj];
+        
+        self.disCMC.visible=NO;
+        
+        [self unschedule:@selector(loop:)];
+    });
+    
+    
+    
+    
+//  GameOverScene *obj = [GameOverScene alloc];
+//    obj.coinText1=self.coinText1;
+//    obj.distextcount = self.distextcount;
+//    obj.dis = (self.dis*0.01);
+//    obj.score = self.score;
+//    [obj init];
+//    NSLog(@" obj.dis====== %d",obj.dis);
+//    NSLog(@" obj.score======%d",obj.score);
+//    NSLog(@"obj.coinText1==== %@",obj.coinText1);
+//
+//    
+//   [self addChild:obj];
+//
+//    self.disCMC.visible=NO;
+  //  [self.shareButtons setVisible:YES];
+    //[self unschedule:@selector(loop:)];
+    
+}
+
+//the main loop
+
+-(void) loop:(ccTime) delta{
+    
+    //[self unschedule:_cmd];
+    if(self.stopGame){
+        return;
+    }
+    if(self.player.state==-1){
+        
+
+    }
+    else {
+        [self.player update:delta];
+        
+        [self moveStage:self.player.speed delta:delta];
+        
+            self.dis+=(self.player.speed*0.05);
+        
+    }
+           
+}
+
+//move background and Platform
+
+-(void) moveStage:(float)sp delta:(ccTime)de{
+    [self.bg moveWithSpeed:sp/60/7];
+//    [self.pf move:sp/60];
+    if ((self.soundToggleItem.selectedIndex==0)) {
+        [self.pf move:sp/60 val:1] ;
+    }else{
+    [self.pf move:sp/60 val:0] ;
+    }
+}
+
+-(void)ccTouchesBegan:(NSSet *)touches withEvent:(UIEvent *)event{
+    
+    
+    if(self.player.state==-1){
+        
+        
+        //[self onEnterTransitionDidFinish];
+        //[self.player gotoAndStop:@"run"];
+        
+        return;
+        
+    }
+//***********************************************************
+//    // added now to check the sprite position on touch....
+//    int py=((CCLayer*)(self.player)).position.y;
+//    Platform *pf3=[Platform alloc];
+//    
+//    int py1=((CCLayer*)(pf3.enemy)).position.y;
+//    
+//    
+//    int px=((CCLayer*)(self.player)).position.x;
+//    int px1=((CCLayer*)(pf3.enemy)).position.x;
+//    
+   // if (pf3.enemy.visible) {
+//        NSLog(@"player x=== %d",px);
+//        NSLog(@"player y==== %d",py);
+//        
+//        NSLog(@"enemy x==== %d",px1);
+//        NSLog(@"enemy y==== %d",py1);
+   // }
+//***********************************************
+      
+    if(self.player.state==0&&self.readyGoClipIsFinished){
+        [self.player jump];
+    }
+    self.transValue = YES;
+    //[self.bg setColorWithRBG];
+    
+  //  [[CCDirector sharedDirector]replaceScene:[CCTransitionZoomFlipX  transitionWithDuration:0.6 scene:[Ham node]] ];
+    
+         
+}
+
+-(void)ccTouchesEnded:(NSSet *)touches withEvent:(UIEvent *)event{
+    [self removeChild:gameOverSprite cleanup:YES];
+      self.gameOverScreen.visible=NO;
+    //[self removeChild:obj cleanup:YES];
+    
+    
+  //  [[CCDirector sharedDirector] popScene];
+    
+    
+    
+    if(self.stopGame){
+        self.gameOverSprite.visible=NO;
+        [self newGame];
+       
+        [self onEnterTransitionDidFinish];
+        
+        return;
+    }
+    
+    if(self.stopGame==NO){
+     
+    if(self.player.state==1){
+        self.player.state=2; 
+        
+         if ((self.soundToggleItem.selectedIndex==0)){
+            [self.player gotoAndStop:@"fall" val:1];
+         }else{
+             [self.player gotoAndStop:@"fall" val:0];
+         }
+        
+//        -(void) gotoAndStop:(NSString *) frame val:(int)soundValue
+    }
+    
+    }
+    
+}
+//ready for a new game
+-(void) newGame{
+    [self.pf removeAll];
+    
+    self.stopGame=NO;
+    [self.shareButtons setVisible:NO];
+    
+    [self.pf createForNewGame];
+    
+    [self.player readyForNewGame];
+    
+    [self.runTimeCoinText setString:@"0"];
+  
+    self.player.position=ccp(self.player.position.x,self.pf.getSafeY);
+    
+}
+
+// on "dealloc" you need to release all your retained objects
+- (void) dealloc
+{
+	// in case you have something to dealloc, do it in this method
+	// in this particular example nothing needs to be released.
+	// cocos2d will automatically release all the children (Label)
+	
+	// don't forget to call "super dealloc"
+    
+    [self.pf release];
+    
+    [self.player release];
+    [self.readyGoClip release];
+    [self.readyGoClipAction release];
+	[super dealloc];
+}
+@end

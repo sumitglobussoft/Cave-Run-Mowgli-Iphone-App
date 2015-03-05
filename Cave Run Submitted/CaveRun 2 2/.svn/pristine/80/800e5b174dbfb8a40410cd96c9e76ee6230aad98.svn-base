@@ -1,0 +1,945 @@
+//
+//  Platform.m
+//  CaveRun
+//
+//  Created by tang on 12-6-7.
+//  Copyright (c) 2012年 __MyCompanyName__. All rights reserved.
+//
+
+#import "Platform.h"
+#import "cocos2d.h"
+#import "CCAnimate+SequenceLoader.h"
+#import "Player.h"
+#import "SimpleAudioEngine.h"
+#import "GameOverScene.h"
+
+#import "GameMain.h"
+
+@implementation Platform
+
+@synthesize widMax,widMin,leftWidth,rightWidth,midWidth,gap,lastWid;
+
+@synthesize pool;
+ 
+@synthesize lastPF;
+@synthesize __pf;
+
+@synthesize pfsArr,pfWidthArr;
+
+@synthesize coinsArr;
+@synthesize demonArr;
+
+
+@synthesize coinsArrsArr;
+@synthesize demonArrsArr;
+
+@synthesize player;
+
+@synthesize obsArr,obsArrsArr,coinsNum,currentLevel,gm;
+
+@synthesize enemy,Bool,loopFall,fall,flag;
+-(id) init
+{
+    
+    if( (self=[super init])) {
+       lives = [NSUserDefaults standardUserDefaults];
+      //  self.lives=10;
+        self.gap=50;
+        self.coinsNum=0;
+        self.currentLevel=1;
+        self.lastWid=0;
+        self.leftWidth=122/2;
+        self. rightWidth=122/2;
+        self. midWidth=100/2;
+        self. widMax=800;
+        self.widMin=200;
+     //  CGSize ws=[[CCDirector sharedDirector]winSize];
+          [[CCSpriteFrameCache sharedSpriteFrameCache] addSpriteFramesWithFile:@"clips.plist"];
+          [[CCSpriteFrameCache sharedSpriteFrameCache] addSpriteFramesWithFile:@"enemy.plist"];
+        
+        self.pool=[[NSMutableArray alloc]init];
+        self.pfsArr=[[NSMutableArray alloc]init];
+        self.pfWidthArr=[[NSMutableArray alloc]init];
+        
+        self.coinsArrsArr=[[NSMutableArray alloc]init];
+        self.demonArrsArr=[[NSMutableArray alloc]init];
+        self.demonArr=[[NSMutableArray alloc]init];
+        self.obsArr=[[NSMutableArray alloc]init];
+        
+        self.obsArrsArr=[[NSMutableArray alloc]init];
+        
+      
+        
+        [self addMidDecalToPool:500];
+        
+        self.lastPF=[self create:1000 addOB:NO];
+        [self addChild:self.lastPF];
+        
+          self.loopFall=[CCRepeatForever actionWithAction:[CCAnimate actionWithSpriteSequence:@"fall%04d.png"
+                                                                             
+                                                                                                      numFrames:6
+                                                                                                          delay:0.03f
+                                                                                           restoreOriginalFrame:NO]];
+        
+           }
+    
+    
+    
+    return self;
+    
+}
+
+//move pf clips
+
+-(void) move:(float) speed val:(int)soundValue {
+    // self.position=ccp(self.position.x-speed,self.position.y);
+    //CCLOG(@"%i",[pfsArr count]);
+    self.soundValue=soundValue;
+    //NSLog(@"self.soundvalue=== %d",self.soundValue);
+    id pf=nil;
+    
+    for(int i=0;i<[self.pfsArr count];i++){
+        CCLayer * _pf_=[self.pfsArr objectAtIndex:i];
+        _pf_.position=ccp(_pf_.position.x-speed,_pf_.position.y);
+        
+       
+        if(_pf_.position.x+[[self.pfWidthArr objectAtIndex:i] intValue]<0){
+            pf=_pf_;
+          
+        }
+    }
+    
+    //if old pf is out of the stage , create new
+    
+    if(self.lastPF.position.x+self.lastWid<480){
+        int cn=(int)(500+arc4random()%800);
+        int _y=(int)(30+arc4random()%200);
+        int _x=self.lastPF.position.x+self.lastWid+100+((int) arc4random()%self.gap);
+        CCLayer *newPF=[self create:cn addOB:YES];
+        newPF.position=ccp( _x,_y);
+        self.lastPF=newPF;
+        [self addChild:newPF];
+    }
+    
+    //remove pf
+    if(pf){
+          
+         //CCLOG(@"========== Platform removed ============");
+         [self removeChild:pf cleanup:YES];
+         [self.pfWidthArr removeObjectAtIndex:0];
+         [self.pfsArr removeObjectAtIndex:0];
+         [self.coinsArrsArr removeObjectAtIndex:0];
+         [self.obsArrsArr removeObjectAtIndex:0];
+        
+    }
+    
+    [self tryRemoveCoin];
+    
+}
+
+//remove all platforms
+
+-(void) removeAll{
+    for(int i=0;i<[self.pfsArr count];i++){
+        [self removeChild:[self.pfsArr objectAtIndex:i] cleanup:NO];
+    }
+    self.pfsArr=[[NSMutableArray alloc]init];
+}
+
+//ready for new game 
+-(void) createForNewGame{
+    self.lives=3;
+    
+    
+    
+    
+    
+    
+    self.currentLevel=1;
+    self.coinsNum=0;
+    self.gap=50;
+    self.lastPF=nil;
+    self.obsArrsArr=[[NSMutableArray alloc]init];
+    self.pfsArr=[[NSMutableArray alloc]init];
+    self.pfWidthArr=[[NSMutableArray alloc]init];
+    self.coinsArrsArr=[[NSMutableArray alloc]init];
+    self.demonArrsArr=[[NSMutableArray alloc]init];
+    self.lastPF=[self create:1000 addOB:NO];
+    [self addChild:self.lastPF];
+    
+}
+
+-(void) initForNewGame{
+    
+}
+
+//create platforms
+-(CCLayer *) create:(int) _width addOB:(BOOL)addob{
+    
+    
+    self.coinsArr=[[NSMutableArray alloc]init];
+    self.obsArr=[[NSMutableArray alloc]init];
+    
+    CCLayer *mc=[CCLayer node];
+    
+  
+    int _wid=_width;
+    if(_wid<self.widMin){
+        _wid=self.widMin;
+    }
+    
+    
+    int _widMid=_wid-(self.leftWidth+self.rightWidth);
+    
+    
+    int numSpriteToCreate=_widMid/100;
+    NSLog(@"numSpriteToCreate===== %d",numSpriteToCreate);
+    int maxNumOfOb=1;
+    
+    CCSprite * left=[CCSprite spriteWithSpriteFrameName:@"d0.png"];
+    left.anchorPoint=ccp(0,1);
+    [mc addChild:left];
+    for(int i=0;i<numSpriteToCreate;i++){
+        
+        CCSprite *midMC=[self getDecalFromPool];
+        
+        
+        midMC.anchorPoint=ccp(0,1);
+        
+        midMC.position=ccp(leftWidth+i*midWidth,0);
+        
+        [mc addChild:midMC];
+        
+        if(arc4random()%10>3){
+            
+            if(maxNumOfOb>0&&arc4random()%10>8&&addob){
+                
+                NSString *typeStr;
+                CCSprite *ob;
+                
+                int rn=arc4random()%10;
+                if(rn>=7&&rn<=9){
+                   typeStr =@"stone";
+                    ob=[CCSprite spriteWithSpriteFrameName:@"obstacle_small0001.png"];
+                } 
+                if(rn>=4&&rn<=6){
+                    typeStr =@"fire";
+                    ob=[CCSprite spriteWithSpriteFrameName:@"obstacle_small0003.png"];
+                }
+                
+                if(rn>=1&&rn<=3){
+                    typeStr =@"ice";
+                    ob=[CCSprite spriteWithSpriteFrameName:@"obstacle_small0005.png"];
+                }
+                
+                if(rn==0){
+                    typeStr =@"no";
+                    ob=[CCSprite spriteWithSpriteFrameName:@"obstacle_small0004.png"];
+                }
+                
+                
+                
+                ob.position=ccp(midMC.position.x+5,midMC.position.y-16);
+               
+                [mc addChild:ob];
+                
+                NSMutableArray * objArr=[[NSMutableArray alloc]init];
+                
+                [objArr addObject:ob];
+                
+                [objArr addObject:typeStr];
+                
+                //[objArr addObject:NO];
+                
+                [self.obsArr addObject:objArr];
+                
+                maxNumOfOb--;
+            }
+            else {
+                 
+            
+                id loopCoin= [CCRepeatForever actionWithAction:[CCAnimate actionWithSpriteSequence:@"coin%04d.png"
+                                                            
+                                                                                     numFrames:36 
+                                                                                         delay:0.014f
+                                                                          restoreOriginalFrame:NO]];            
+                //prev delay 0.014
+                CCSprite *coin=[CCSprite node];
+            
+                [coin runAction:loopCoin];
+            
+                
+                int rn5=arc4random()%10;
+                if (rn5<5) {
+                    int rn1=arc4random()%150;
+                    
+                    coin.position=ccp(midMC.position.x+5,midMC.position.y+rn1);
+                    
+                    
+                    
+                    [mc addChild:coin];
+                    
+                    
+                    
+//added now
+                //    CCSprite *enemy=[CCSprite node];
+                    
+//                    enemy = [CCSprite spriteWithFile:@"enemy.png"];
+//                    
+//                    enemy.position=ccp(midMC.position.x+50,midMC.position.y-10);
+//                    
+//                    
+//                    [mc addChild:enemy z:10];
+//                   
+//                   [self.demonArr addObject:enemy];
+                    
+                    
+                    
+                    //test
+                    
+                    
+                    
+                    int rn07=arc4random()%10;
+                    if (rn07<3) {
+                        
+                        
+                    
+                    NSMutableArray *walkAnimFrames = [NSMutableArray array];
+                    for (int i=1; i<=2; i++) {
+                        [walkAnimFrames addObject:
+                         [[CCSpriteFrameCache sharedSpriteFrameCache] spriteFrameByName:
+                          [NSString stringWithFormat:@"enemy%04d.png",i]]];
+                    }
+                    
+                    
+                    id animation = [CCAnimation animationWithFrames:walkAnimFrames delay:0.50];
+                    
+                    enemy = [CCSprite spriteWithSpriteFrameName:@"enemy0001.png"];
+                    CCAction *walkAction = [CCRepeatForever actionWithAction:[CCAnimate actionWithAnimation:animation]];
+                    [enemy runAction:walkAction];
+                    
+                    
+//                    int r1=arc4random()%100;
+//                    if (r1>50) {
+//                          enemy.position=ccp(midMC.position.x+r1,midMC.position.y-10);
+//                    }else{
+                    enemy.position=ccp(midMC.position.x+80,midMC.position.y-10);
+//                    }
+                    
+                    [mc addChild:enemy z:10];
+                    
+                    [self.demonArr addObject:enemy];
+                    }
+                    
+                }
+                    [self.coinsArr addObject:coin];
+   
+                
+                
+            }
+            
+        }
+    }
+    
+    CCSprite * right=[CCSprite spriteWithSpriteFrameName:@"d6.png"];
+    right.anchorPoint=ccp(0,1);
+    right.position=ccp(leftWidth+numSpriteToCreate*midWidth,0);
+    
+    [mc addChild:right];
+    
+   
+    
+    if(!self.lastPF){
+        mc.position=ccp(0,74);
+    }
+    
+    self.lastWid=(numSpriteToCreate*midWidth+self.leftWidth+self.rightWidth);
+    [pfWidthArr addObject:[NSNumber numberWithInt:self.lastWid]];
+    
+    [self.pfsArr addObject:mc];
+    
+    [self.coinsArrsArr addObject:self.coinsArr];
+    [self.demonArrsArr addObject:self.demonArr];
+    [self.obsArrsArr addObject:self.obsArr];
+    return mc;
+}
+
+//get current coins array
+
+-(NSMutableArray *) getCurrentCoinsArr{
+    int idx=0;
+   // NSLog(@"self.coinsArrsArr count==== %d",[self.coinsArrsArr count]);
+    int arrCount=[self.coinsArrsArr count];
+   // NSLog(@"arrCount=== %d",arrCount);
+     
+    if(((CCLayer *)([self.pfsArr objectAtIndex:0])).position.x+[[self.pfWidthArr objectAtIndex:0] intValue]<[Player initX]){
+        
+        idx=1;
+        
+    }
+    
+    if(arrCount==1&&idx==1){
+        return nil;
+    }
+    
+    if(arrCount>=0&&idx==0){
+        return [self.coinsArrsArr objectAtIndex:0];
+    }
+    
+    if(arrCount>=2&&idx==1){
+        return [self.coinsArrsArr objectAtIndex:1];
+    }
+    
+    return nil;
+}
+
+//get current demons array
+
+-(NSMutableArray *) getCurrentDemonsArr{
+    int idx=0;
+  //  NSLog(@"self.demonsArrsArr count==== %d",[self.demonArrsArr count]);
+    int arrCount=[self.demonArrsArr count];
+   // NSLog(@"arrCount=== %d",arrCount);
+    
+    if(((CCLayer *)([self.pfsArr objectAtIndex:0])).position.x+[[self.pfWidthArr objectAtIndex:0] intValue]<[Player initX]){
+        
+        idx=1;
+        
+        
+    }
+    
+    if(arrCount==1&&idx==1){
+        return nil;
+    }
+    
+    if(arrCount>=0&&idx==0){
+      return [self.demonArrsArr objectAtIndex:0];
+    }
+    
+    if(arrCount>=2&&idx==1){
+        return [self.demonArrsArr objectAtIndex:1];
+    }
+    
+    return nil;
+}
+
+
+
+
+
+
+//get current obstructs array
+
+-(NSMutableArray *) getCurrentObsArr{
+    int idx=0;
+    
+    int arrOb=[self.obsArrsArr count];
+    
+    
+    
+    if(((CCLayer *)([self.pfsArr objectAtIndex:0])).position.x+[[self.pfWidthArr objectAtIndex:0] intValue]<[Player initX]){
+        
+        idx=1;
+        
+        
+    }
+    
+    
+    
+    if(arrOb==1&&idx==1){
+        return nil;
+    }
+    
+    if(arrOb>=0&&idx==0){
+        return [self.obsArrsArr objectAtIndex:0];
+    }
+    
+    if(arrOb>=2&&idx==1){
+        return [self.obsArrsArr objectAtIndex:1];
+    }
+    
+    return nil;
+}
+
+//try remove coin
+
+-(void) tryRemoveCoin{
+//    lives=[NSUserDefaults standardUserDefaults];
+//    [lives setInteger:self.lives forKey:@"livestext"];
+//    
+//    [[NSUserDefaults standardUserDefaults]synchronize];
+    
+   NSMutableArray *cca=[self getCurrentCoinsArr];
+    NSMutableArray *cca1=[self getCurrentDemonsArr];
+
+    if(!flag){
+      //  NSLog(@"flag== %d",flag);
+   if (cca1) {
+    int py1=((CCLayer *)(self.player)).position.y;
+        for(int i=0;i<[cca1 count];i++){
+           // CCSprite *enemy=[cca objectAtIndex:i];
+           enemy=[cca1 objectAtIndex:i];
+            //initial <6
+           if (abs(enemy.position.x+enemy.parent.position.x-[Player initX])<4) {
+               
+//                NSLog(@"enemy.position.x== %f",enemy.position.x);
+//               NSLog(@"enemy.parent.position.x=== %f",enemy.parent.position.x);
+    
+               
+       //initial <30
+
+                if (abs(enemy.position.y+enemy.parent.position.y-py1)<30 && enemy.visible && enemy.visible) {
+     
+                   
+                    //[self.player setOpacity:1];
+                 //   [self.player runAction:[CCFadeTo actionWithDuration:0.1 opacity:1.0f]];
+                   
+//                    CCActionInterval* fadeOut = [CCFadeOut actionWithDuration: 1.0];
+//                    CCActionInterval* fadein = [CCFadeIn actionWithDuration:1.0];
+//                    
+//                    [self.player runAction: [CCSequence actionOne: fadeOut two: fadein]];
+                    
+//                    [self.player runAction:[CCFadeTo actionWithDuration:1.0f opacity:0]];
+//                    [self.player runAction:[CCFadeOut actionWithDuration:1.0f]];
+                    
+//                    
+//                    id action = [CCSequence actions:[CCFadeIn actionWithDuration:1],
+//                                 [CCShow action],
+//                                 [CCCallFunc actionWithTarget:self selector:@selector(doneTakingDamage)], nil];
+//                    [self.player runAction:action];
+                    
+//                    CCActionInterval *a = [CCSequence actions:
+//                                           [CCFadeIn actionWithDuration:1],
+//                                           
+//                                           [CCFadeOut actionWithDuration:1],
+//                                          
+//                                           nil ];
+//                    [self.player runAction: a];
+                    
+                //    [self.player setOpacity:1];
+                    
+//                    id action1=[CCFadeIn actionWithDuration:1];
+//                    id action2=[CCFadeOut actionWithDuration:1];
+//                    
+//                    id action=[CCSequence actions:action1,action2, nil];
+//                    [self.player runAction:action];
+                    
+//                    NSUserDefaults *lives=[NSUserDefaults standardUserDefaults];
+//                    [lives setInteger:self.lives forKey:@"livestext"];
+//                    
+//                    [[NSUserDefaults standardUserDefaults]synchronize];
+//                    
+//                    
+//                    NSInteger myLife=[lives integerForKey:@"livestext"];
+//                    
+//                    NSLog(@"myLife=== %d",myLife);
+                    
+                    
+                    
+                    if (self.lives<=0) {
+                        
+                    }else{
+//****************************************************************
+//                    id action = [CCSequence actions:[CCBlink actionWithDuration:1.5 blinks:2],
+//                                 [CCShow action],
+//                                 nil];
+//                    [self.player runAction:action];
+//****************************************************************
+////                        
+                        id action = [CCSequence actions:[CCBlink actionWithDuration:1 blinks:1],
+                                     [CCShow action],
+                                     [CCCallFunc actionWithTarget:self selector:@selector(done)], nil];
+                        [self.player runAction:action];
+                        
+//                        
+//                         [[CCDirector sharedDirector]replaceScene:[CCTransitionFadeTR transitionWithDuration:3.0 scene:[GameMain scene]]];
+
+             
+                        
+//                        id ap=[CCFadeTo actionWithDuration:0.3 opacity:0];
+//                        id seq=[CCSequence actions:ap,nil];
+//                        [self.player runAction:seq];
+//                      /f.player=(CCSprite*)self.player;
+                        
+//                        id fadeIn = [self.player runAction:[CCFadeTo actionWithDuration:0.5 opacity:127]];
+//                        id fadeOut = [self.player runAction:[CCFadeTo actionWithDuration:0.5 opacity:255]];
+//                          id fadeAlphaTo0=[CCFadeTo actionWithDuration:0.5 opacity:0];
+//                          id sequence = [CCSequence actions: fadeAlphaTo0, nil];
+//                          [self.player runAction: sequence];
+//                   
+//                        id action1=[CCFadeIn actionWithDuration:1 ];
+//                        id action2=[CCFadeOut actionWithDuration:1];
+//                        
+//                        id action=[CCSequence actions:action1,action2, nil];
+//                        [self.player runAction:action];
+                        
+                     //   [self.player setOpacity:1.0];
+                        
+                       // [self.player setOpacity:1.0];
+                        
+//                        CCFadeTo *fadeIn = [CCFadeTo actionWithDuration:5.0 opacity:127];
+//                        CCFadeTo *fadeOut = [CCFadeTo actionWithDuration:5.0 opacity:255];
+//                        
+//                        CCSequence *pulseSequence = [CCSequence actionOne:fadeIn two:fadeOut];
+//                     
+//                        [self.player runAction:pulseSequence];
+                        
+                        
+                        
+                    }
+                    
+                   
+
+//                    
+//                    CCFadeTo *fadeIn = [CCFadeTo actionWithDuration:0.5 opacity:127];
+//                    CCFadeTo *fadeOut = [CCFadeTo actionWithDuration:0.5 opacity:255];
+//                    
+//                    CCSequence *pulseSequence = [CCSequence actionOne:fadeIn two:fadeOut];
+//                    CCRepeatForever *repeat = [CCRepeatForever actionWithAction:pulseSequence];
+//                    [self.player runAction:repeat];
+                    
+                    
+                    
+                    
+                    
+//                    CCFadeTo *fadeIn = [CCFadeIn actionWithDuration:1];
+//                    CCFadeTo *fadeOut = [CCFadeOut actionWithDuration:1];
+//                    
+//                    CCSequence *pulseSequence = [CCSequence actionOne:fadeIn two:fadeOut];
+//                    CCRepeatForever *repeat = [CCRepeatForever actionWithAction:pulseSequence];
+//                    [self runAction:repeat];
+//                     CCSequence *fadeSequence = [CCSequence actionOne:fadeIn two:fadeOut];
+                    
+                    flag=YES;
+                     NSLog(@"flag inside collision == %d",flag);
+                   
+                    
+                    
+//                   lives=[NSUserDefaults standardUserDefaults];
+//                    [lives setInteger:self.lives forKey:@"livestext"];
+//                    
+//                    [[NSUserDefaults standardUserDefaults]synchronize];
+                    
+                    
+                    NSInteger myLife=[lives integerForKey:@"livestext"];
+                     self.lives=self.lives-1;
+                    
+                     NSLog(@"myLife1=== %d",myLife);
+                    
+                    
+//                     NSLog(@"myLife2=== %d",myLife);
+//                    
+//                    
+//                    
+//                    NSLog(@"myLife3=== %d",myLife);
+                    [self.gm updateLives:myLife];
+                    NSLog(@"loop enter *************************************************************************************");
+                    
+                       // NSLog(@"self.lives=== %d",self.lives);
+                    NSLog(@"loop exit *************************************************************************************");
+                   
+                        GameMain *gameMain=(GameMain*)self.gm;
+                    
+                    if (self.lives<=0) {
+                        [gameMain showGameOver];
+                         gameMain.stopGame=YES;
+                       [self removeChild:self.player cleanup:YES];
+                    
+                       NSMutableArray *walkAnimFrames = [NSMutableArray array];
+                        for (int i=1; i<=6; i++) {
+                            [walkAnimFrames addObject:
+                             [[CCSpriteFrameCache sharedSpriteFrameCache] spriteFrameByName:
+                             [NSString stringWithFormat:@"fall%04d.png",i]]];
+                      }
+                      
+                       
+                        id animation = [CCAnimation animationWithFrames:walkAnimFrames delay:0.06];
+                        
+                        self.fall = [CCSprite spriteWithSpriteFrameName:@"fall0001.png"];
+                        CCAction*  walkAction = [CCRepeatForever actionWithAction:[CCAnimate actionWithAnimation:animation]];
+                        
+                       
+                       [self.fall runAction:walkAction];
+                       self.fall.position=ccp(120,py1);
+                       
+                        //added now
+                        
+                       id actionMove = [CCMoveTo actionWithDuration:15 position:ccp(450,-400)];
+                       
+                       [self.fall runAction:actionMove];
+                        
+                      [self addChild:fall];
+                        
+                        
+                        
+                    }
+//                    [gameMain showGameOver];
+////                    gameMain.stopGame=YES;
+//                    [self removeChild:self.player cleanup:YES];
+//                   
+//                   
+//                    NSMutableArray *walkAnimFrames = [NSMutableArray array];
+//                    for (int i=1; i<=6; i++) {
+//                        [walkAnimFrames addObject:
+//                         [[CCSpriteFrameCache sharedSpriteFrameCache] spriteFrameByName:
+//                          [NSString stringWithFormat:@"fall%04d.png",i]]];
+//                    }
+//                    
+//                    
+//                    id animation = [CCAnimation animationWithFrames:walkAnimFrames delay:0.06];
+//                    
+//                    self.fall = [CCSprite spriteWithSpriteFrameName:@"fall0001.png"];
+//                  CCAction*  walkAction = [CCRepeatForever actionWithAction:[CCAnimate actionWithAnimation:animation]];
+//                    
+//                    
+//                  [self.fall runAction:walkAction];
+//                   self.fall.position=ccp(120,py1);
+//                    
+//                    //added now
+//                    
+//                    id actionMove = [CCMoveTo actionWithDuration:15 position:ccp(450,-400)];
+//                    
+//                    [self.fall runAction:actionMove];
+//                  
+//                    [self addChild:fall];
+                    
+//                    CCCallBlock *block = [CCCallBlock actionWithBlock:^{
+//                        [self.player stopAllActions];
+//                    }];
+//                    
+//                    CCDelayTime *time = [CCDelayTime actionWithDuration:5];
+//                    
+//                    
+//                    [self.player runAction:[CCSequence actions:time, block, nil]];
+                    
+                  
+                    
+                    
+                    
+                    
+                  
+                     //lives**********************
+                    
+                     if (self.soundValue==1) {
+                    [[SimpleAudioEngine sharedEngine] playEffect:@"hurt.mp3" pitch:1 pan:0 gain:1];
+                     }
+                    NSLog(@"**************************************************************************");
+                }
+                }
+               
+            }
+        }
+  }
+ 
+    if(cca){
+        int py=((CCLayer*)(self.player)).position.y;
+        for(int i=0;i<[cca count];i++){
+            CCSprite *coin=[cca objectAtIndex:i];
+            if(abs(coin.position.x+coin.parent.position.x-[Player initX])<6){
+//                NSLog(@"coin.position.x=== %f",coin.position.x);
+//                NSLog(@"coin.parent.position.x=== %f",coin.parent.position.x);
+               
+                
+                if(abs(coin.position.y+coin.parent.position.y-py)<85&&coin.visible&&coin.visible){
+                   //coin.visible=NO; 
+                   [coin.parent removeChild:coin cleanup:YES];
+   
+                            if (self.soundValue==1) {
+                         [[SimpleAudioEngine sharedEngine] playEffect:@"coin.wav" pitch:1 pan:0 gain:1];
+                    }
+               
+                    [self.gm updateScore];
+                    if((++self.coinsNum%60==0)){
+                        self.currentLevel++;
+                        ((Player*)[self player ]).maxSpeed+=20;
+                      
+                        
+                        if(self.gap<90){
+                            self.gap+=10;
+                        }
+                        
+                        ((GameMain*)[self gm ]).levelUp.visible=YES;
+                        
+                        ((GameMain*)[self gm ]).levelUp.opacity=255;
+                        
+                        id delay = [CCDelayTime actionWithDuration:0.5];
+                        id fadeAlphaTo0=[CCFadeTo actionWithDuration:0.5 opacity:0];
+                        id func=[CCCallFunc actionWithTarget:self selector:@selector(hideLevelUp)];
+                        id action = [CCSequence actions:delay,fadeAlphaTo0,func,nil]; 
+                         [((GameMain*)[self gm ]).levelUp runAction:action];
+                        
+                        if (self.soundValue==1) {
+                         [[SimpleAudioEngine sharedEngine] playEffect:@"levelUp.wav" pitch:1 pan:0 gain:1];
+                         }
+                        
+                         [((GameMain*)[self gm ]).bg setColorWithRBG];
+                    }
+                }
+                
+                
+            }
+        }
+       
+        
+    }
+
+     
+    [self hitTestOB];
+}
+
+- (void) done {
+   flag=NO;
+   NSLog(@"flag in done ====== %d",flag);
+}
+
+//check obstruct if player hittest it
+
+-(void)hitTestOB{
+    NSMutableArray * oba=[self getCurrentObsArr];
+    
+    if(oba){
+        
+        
+        int py=((CCLayer*)(self.player)).position.y;
+        
+        
+        for(int i=0;i<[oba count];i++){
+            CCSprite *ob=[((NSMutableArray*)([oba objectAtIndex:i])) objectAtIndex:0];
+            NSString *type=[((NSMutableArray*)([oba objectAtIndex:i])) objectAtIndex:1];
+            if(abs(ob.position.x+(ob.parent.position.x+20)-[Player initX])<30){
+                
+                
+                if(abs(ob.position.y+ob.parent.position.y-py)<20&&ob.visible&&ob.opacity==255){
+                    
+                    
+                    ob.opacity=254;
+                    
+                                        
+                    if([type isEqualToString: @"fire"]){
+                        
+                        
+                        if(((Player *)self.player).state==2||((Player *)self.player).state==0
+                           ||((Player *)self.player).state==-3||((Player *)self.player).state==-4){
+                            
+                            if (self.soundValue==1){
+                            [[SimpleAudioEngine sharedEngine] playEffect:@"ouch.wav" pitch:1 pan:0 gain:1];
+                            }
+                            
+                            [self.player fireUp];                            
+                        }
+                    }
+                    
+                    else if([type isEqualToString: @"stone"]){
+                        
+                        if(((Player *)self.player).state==0){
+                            [[SimpleAudioEngine sharedEngine] playEffect:@"hit.wav" pitch:1 pan:0 gain:1];
+                            
+                            [self.player gotoAndStop:@"hit" val:0];
+                            
+                            ((Player *)self.player).state=-2;
+                        }
+                        
+                        
+                    }
+                    
+                    else if([type isEqualToString: @"ice"]){
+                        
+                        if(((Player *)self.player).state==0){
+                            [[SimpleAudioEngine sharedEngine] playEffect:@"slip.wav" pitch:1 pan:0 gain:1];
+                            
+                            [self.player gotoAndStop:@"ice" val:0];
+                            
+                            ((Player *)self.player).state=-4;
+                        }
+                        
+                        
+                    }
+                    
+                    
+                }
+                
+                
+                
+            }
+            
+        }
+        
+    }
+
+}
+
+//hide levelUP image of GameMain
+
+-(void) hideLevelUp{
+    ((GameMain*)[self gm ]).levelUp.visible=NO;
+}
+
+
+//get current platform under player
+-(CCLayer*) getCurrentPFUnderPlayer{
+    CCLayer* repf=nil;
+    int bordureX=-14;
+    
+    for(int i =0; i<[self.pfsArr count]; i++){
+        
+        CCLayer *pf=[self.pfsArr objectAtIndex:i];
+        
+        if(pf.position.x+[[self.pfWidthArr objectAtIndex:i]intValue]>Player.initX+bordureX&&pf.position.x<Player.initX-bordureX){
+            repf=pf;
+        }
+        
+    }
+    
+return repf;
+    
+}
+
+
+-(void) addMidDecalToPool:(int)cnt{
+    CCSprite *tempPF;
+    NSString *fn;
+    
+    for(int i=0;i<cnt;i++){
+        
+        fn=[NSString stringWithFormat:@"d%i.png",(i%5)+1];
+        tempPF=[CCSprite spriteWithSpriteFrameName:fn];
+       
+        [self.pool addObject:[CCSprite spriteWithSpriteFrameName:fn]];
+    }
+         
+}
+
+-(CCSprite *) getDecalFromPool{
+     
+    
+    if([self.pool count]==0){
+        [self addMidDecalToPool:5];
+    }
+    self.__pf=[self.pool objectAtIndex:0];
+    
+    [self.pool removeObjectAtIndex:0];
+    
+    return self.__pf;
+}
+
+-(int) getSafeY{
+    int bordureY=30;
+    CCLayer *pf=[self getCurrentPFUnderPlayer];
+    if(pf!=nil){
+        return pf.position.y-bordureY;
+    }
+                
+    return -300;
+}
+
+
+-(void) dealloc{
+    self.lastWid=0;
+    self.lastPF=nil;
+    self.__pf=nil;
+    self.pool=nil;
+    [super dealloc];
+}
+
+
+@end

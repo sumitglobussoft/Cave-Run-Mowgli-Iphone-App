@@ -1,0 +1,43 @@
+//
+//  GameOverScene.h
+//  CaveRun
+//
+//  Created by Sumit on 17/06/14.
+//  Copyright 2014 __MyCompanyName__. All rights reserved.
+//
+#import "CCSprite.h"
+#import <Foundation/Foundation.h>
+#import "cocos2d.h"
+#import "GameMain.h"
+#import "GameOverScene.h"
+
+@class GameMain;
+@interface GameOverScene : CCLayer {
+    CCSprite *gameOverSprite;
+    //CCLabelTTF *levelText,*runTimeDisText;
+        //CCLabelBMFont *text1,*text2,*text3,*text4;
+    GameMain *gm;
+    id gameMain;
+    GameOverScene *gameOverScreen;
+      
+}
+-(void)setScore;
+@property(nonatomic,strong)NSString *s1;
+@property(nonatomic,retain)  GameOverScene *gameOverScreen;
+@property(nonatomic,retain) CCSprite *gameOverSprite;
+@property(nonatomic,retain) CCLabelTTF *disText,*levelText,*totalScoreText,*runTimeDisText,*runTimeCoinText,*coinText;
+@property(nonatomic)NSInteger coinCount;
+@property(nonatomic,retain) CCLabelTTF *shareText;
+@property (nonatomic,retain) id gameMain;
+@property(nonatomic,strong)NSString *coinText1;
+@property(nonatomic,assign) int dis;
+@property(nonatomic,assign)int score;
+@property(nonatomic,assign) int distextcount;
+
+//facebook
+@property(nonatomic,retain) CCMenu *shareButtons;
+@property(nonatomic,retain) CCMenuItemImage *shareOnFb;
+@property(nonatomic,retain) NSString *strPostMessage;
+
+
+@end
